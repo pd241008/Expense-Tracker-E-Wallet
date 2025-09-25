@@ -115,10 +115,6 @@ Secure login and sign-up powered by Clerk.
 ![Dashboard](https://via.placeholder.com/800x400?text=Expense+Manager+Dashboard)  
 Track and manage categories, transactions, and yearly history in one place.
 
-### 🎥 Demo
-![Expense Manager Demo](https://via.placeholder.com/800x400?text=Demo+GIF)  
-A short demo showcasing the app's core features and smooth animations.
-
 ---
 
 ## 🤝 Contributing
@@ -138,12 +134,6 @@ Please ensure your code follows the project's coding standards and includes appr
 ## 📜 License
 
 This project is licensed under the [MIT License](LICENSE).
-
----
-
-## 📬 Contact
-
-For questions or feedback, reach out via [GitHub Issues](https://github.com/your-username/expense-manager/issues) or connect with me on [X](https://x.com/your-username).
 
 ---
 

@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Expense Manager",
+  title: "E-Wallet Expense Manger",
   description: "Next.js based Expense Manager",
 };
 

@@ -8,13 +8,14 @@ import { Button } from "@/components/ui/button";
 import {
   Loader2,
   ReceiptText,
-  Trash2,
-  Calendar,
   Plus,
   TrendingUp,
   TrendingDown,
 } from "lucide-react";
 import defaultCategoriesData from "@/data/defaultCategories.json";
+import { TransactionTracker } from "@/components/transactions/TransactionTracker";
+import { EditTransactionDialog } from "@/components/transactions/EditTransactionDialog";
+import { TransactionCard } from "@/components/TransactionCard";
 
 export interface Transaction {
   _id: string;
@@ -22,7 +23,7 @@ export interface Transaction {
   description: string;
   date?: number;
   userId?: string;
-  type?: "income" | "expense"; // Enforced type
+  type?: "income" | "expense";
   category?: string;
   categoryIcon?: string;
   createdAt?: number;
@@ -38,73 +39,20 @@ export interface Category {
 
 const DEFAULT_CATEGORIES = defaultCategoriesData as Category[];
 
-function TransactionCard({
-  tx,
-  onDelete,
-}: {
-  tx: Transaction;
-  onDelete: (id: string) => void;
-}) {
-  const isIncome = tx.type === "income";
-
-  return (
-    <div className="group flex items-center justify-between p-4 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-all shadow-sm">
-      <div className="flex items-center gap-4">
-        <div
-          className={`flex h-10 w-10 items-center justify-center rounded-full ${isIncome ? "bg-emerald-500/10 text-emerald-500" : "bg-destructive/10 text-destructive"}`}>
-          {isIncome ? (
-            <TrendingUp className="h-5 w-5" />
-          ) : (
-            <TrendingDown className="h-5 w-5" />
-          )}
-        </div>
-        <div>
-          <p className="text-sm font-medium text-foreground">
-            {tx.description}
-          </p>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
-            <Calendar className="h-3 w-3" />
-            {tx.date ? new Date(tx.date).toLocaleDateString() : "Recent"}
-            {tx.category && (
-              <>
-                <span className="mx-1">•</span>
-                <span className="px-1.5 py-0.5 rounded-md bg-secondary text-[10px] uppercase tracking-wider">
-                  {tx.category}
-                </span>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="flex items-center gap-4">
-        <p
-          className={`text-base font-semibold ${isIncome ? "text-emerald-500" : "text-foreground"}`}>
-          {isIncome ? "+" : "-"}${tx.amount.toFixed(2)}
-        </p>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onDelete(tx._id)}
-          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all h-8 w-8">
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 export default function TransactionsPage() {
   const { isLoaded, isSignedIn, user } = useUser();
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   // Form State
   const [amount, setAmount] = useState("");
   const [desc, setDesc] = useState("");
   const [category, setCategory] = useState("");
-  const [type, setType] = useState<"income" | "expense">("expense"); // NEW: Toggle state
+  const [type, setType] = useState<"income" | "expense">("expense");
 
   const fetchData = useCallback(
     async (uid: string) => {
@@ -115,7 +63,6 @@ export default function TransactionsPage() {
           fetchJson(`/api/categories?userId=${uid}`),
         ]);
 
-        // Sort newest first
         const sortedTxs = (txs || []).sort(
           (a: Transaction, b: Transaction) => (b.date || 0) - (a.date || 0),
         );
@@ -154,7 +101,7 @@ export default function TransactionsPage() {
       description: desc || "No description",
       date: Date.now(),
       userId: uid,
-      type: type, // FIXED: Now uses the selected type
+      type,
       category,
     };
 
@@ -170,6 +117,15 @@ export default function TransactionsPage() {
     await fetchData(uid);
   };
 
+  const saveEdit = async (updatedTx: Transaction) => {
+    await fetchJson("/api/transactions", {
+      method: "PUT",
+      body: JSON.stringify(updatedTx),
+    });
+    setIsEditOpen(false);
+    if (user) fetchData(user.id);
+  };
+
   const deleteTransaction = async (txId: string) => {
     if (!user) return;
     setTransactions((prev) => prev.filter((t) => t._id !== txId));
@@ -179,7 +135,7 @@ export default function TransactionsPage() {
         body: JSON.stringify({ transactionId: txId }),
       });
       if (response?.error) await fetchData(user.id);
-    } catch (error) {
+    } catch {
       await fetchData(user.id);
     }
   };
@@ -209,12 +165,20 @@ export default function TransactionsPage() {
               <div className="flex p-1 bg-secondary rounded-lg">
                 <button
                   onClick={() => setType("expense")}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-all ${type === "expense" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-all ${
+                    type === "expense"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}>
                   <TrendingDown className="h-4 w-4" /> Expense
                 </button>
                 <button
                   onClick={() => setType("income")}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-all ${type === "income" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-all ${
+                    type === "income"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}>
                   <TrendingUp className="h-4 w-4" /> Income
                 </button>
               </div>
@@ -253,10 +217,15 @@ export default function TransactionsPage() {
                   ))}
                 </select>
               </div>
+
               <Button
                 onClick={createTransaction}
                 disabled={!amount || !category}
-                className={`w-full h-11 gap-2 ${type === "income" ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}`}>
+                className={`w-full h-11 gap-2 ${
+                  type === "income"
+                    ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                    : ""
+                }`}>
                 <Plus className="h-4 w-4" />
                 Save {type === "income" ? "Income" : "Expense"}
               </Button>
@@ -297,6 +266,10 @@ export default function TransactionsPage() {
                       key={t._id}
                       tx={t}
                       onDelete={deleteTransaction}
+                      onEdit={(tx) => {
+                        setEditingTx(tx);
+                        setIsEditOpen(true);
+                      }}
                     />
                   ))}
                 </motion.div>
@@ -305,6 +278,16 @@ export default function TransactionsPage() {
           </Card>
         </div>
       </div>
+
+      {/* Financial Activity Monitor — full width below */}
+      <TransactionTracker transactions={transactions} />
+
+      <EditTransactionDialog
+        open={isEditOpen}
+        transaction={editingTx}
+        onOpenChange={setIsEditOpen}
+        onSave={saveEdit}
+      />
     </div>
   );
 }

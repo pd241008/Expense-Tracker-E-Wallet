@@ -2,20 +2,31 @@
 import React, { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { fetchJson } from "../../lib/fetchJson";
-import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  ArrowUpRight,
-  ArrowDownRight,
   Wallet,
   Plus,
   Tags,
-  Lightbulb,
   Loader2,
+  ArrowUpRight,
+  ArrowDownRight,
 } from "lucide-react";
 import Link from "next/link";
-import { Transaction } from "../transaction/page"; // Import the type we made
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from "recharts";
+import { Transaction } from "../transaction/page";
+
+interface ChartDataItem {
+  name: string;
+  value: number;
+}
 
 export default function DashboardPage() {
   const { isLoaded, isSignedIn, user } = useUser();
@@ -23,24 +34,19 @@ export default function DashboardPage() {
     income: number;
     expense: number;
   } | null>(null);
+  const [chartData, setChartData] = useState<ChartDataItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
+    if (!isLoaded || !isSignedIn || !user) return;
 
-    const uid = user!.id;
-    const currentYear = new Date().getFullYear();
-
-    // FIXED: Fetching from the actual transactions table instead of the broken yearhistory table
-    fetchJson(`/api/transactions?userId=${uid}`)
+    fetchJson(`/api/transactions?userId=${user.id}`)
       .then((txs: Transaction[]) => {
-        // Filter transactions strictly for the current year
-        const yearTxs = (txs || []).filter((t) => {
-          if (!t.date) return false;
-          return new Date(t.date).getFullYear() === currentYear;
-        });
+        const currentYear = new Date().getFullYear();
+        const yearTxs = (txs || []).filter(
+          (t) => t.date && new Date(t.date).getFullYear() === currentYear,
+        );
 
-        // Calculate totals accurately based on type
         const totals = yearTxs.reduce(
           (acc, r) => {
             if (r.type === "income") acc.income += r.amount;
@@ -51,190 +57,131 @@ export default function DashboardPage() {
         );
 
         setSummary(totals);
-      })
-      .catch((err) => {
-        console.error("Dashboard calculation error:", err);
-        setSummary({ income: 0, expense: 0 });
+
+        const catMap: Record<string, number> = {};
+        yearTxs
+          .filter((t) => t.type === "expense")
+          .forEach((t) => {
+            const cat = t.category || "Other";
+            catMap[cat] = (catMap[cat] || 0) + t.amount;
+          });
+
+        setChartData(
+          Object.entries(catMap).map(([name, value]) => ({ name, value })),
+        );
       })
       .finally(() => setLoading(false));
   }, [isLoaded, isSignedIn, user]);
 
-  const netBalance = (summary?.income ?? 0) - (summary?.expense ?? 0);
+  const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6"];
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
-  };
+  if (!isLoaded || loading)
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="animate-spin" />
+      </div>
+    );
 
   return (
     <div className="flex-1 space-y-8 p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
-        <motion.h2
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="text-3xl font-bold tracking-tight text-foreground">
-          Dashboard
-        </motion.h2>
+      <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Net Balance
+            </CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              ${((summary?.income || 0) - (summary?.expense || 0)).toFixed(2)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Income
+            </CardTitle>
+            <ArrowUpRight className="h-4 w-4 text-emerald-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-500">
+              +${summary?.income.toFixed(2)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Expense
+            </CardTitle>
+            <ArrowDownRight className="h-4 w-4 text-destructive" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-destructive">
+              -${summary?.expense.toFixed(2)}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {/* Metric 1: Net Balance */}
-        <motion.div variants={itemVariants}>
-          <Card className="bg-card border-border shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Net Balance (This Year)
-              </CardTitle>
-              <Wallet className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mt-1" />
-              ) : (
-                <div
-                  className={`text-2xl font-bold ${netBalance >= 0 ? "text-primary" : "text-destructive"}`}>
-                  $
-                  {netBalance.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
+      <div className="grid gap-4 md:grid-cols-7">
+        <Card className="col-span-4">
+          <CardHeader>
+            <CardTitle>Expense Distribution</CardTitle>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            <ResponsiveContainer
+              width="100%"
+              height="100%">
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value">
+                  {chartData.map((_, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
 
-        {/* Metric 2: Income */}
-        <motion.div variants={itemVariants}>
-          <Card className="bg-card border-border shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Income
-              </CardTitle>
-              <ArrowUpRight className="h-4 w-4 text-emerald-500" />
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mt-1" />
-              ) : (
-                <div className="text-2xl font-bold text-foreground">
-                  $
-                  {(summary?.income ?? 0).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Metric 3: Expense */}
-        <motion.div variants={itemVariants}>
-          <Card className="bg-card border-border shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Expense
-              </CardTitle>
-              <ArrowDownRight className="h-4 w-4 text-destructive" />
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mt-1" />
-              ) : (
-                <div className="text-2xl font-bold text-foreground">
-                  $
-                  {(summary?.expense ?? 0).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      </motion.div>
-
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <motion.div
-          variants={itemVariants}
-          className="col-span-4">
-          <Card className="h-full min-h-[300px] flex items-center justify-center border-border bg-card shadow-sm">
-            <p className="text-sm text-muted-foreground">
-              Financial Activity Chart (Coming Soon)
-            </p>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          variants={itemVariants}
-          className="col-span-3 space-y-4">
-          <Card className="border-border bg-card shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                Quick Actions
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <Link
-                href="/transaction"
-                passHref>
-                <Button
-                  className="w-full justify-start gap-2"
-                  variant="default">
-                  <Plus className="h-4 w-4" />
-                  Add New Transaction
-                </Button>
-              </Link>
-              <Link
-                href="/manage"
-                passHref>
-                <Button
-                  className="w-full justify-start gap-2"
-                  variant="outline">
-                  <Tags className="h-4 w-4" />
-                  Manage Categories
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border bg-card shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <Lightbulb className="h-5 w-5 text-amber-500" />
-                Pro Tips
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  Categorize every expense for accurate analysis.
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  Set up recurring transactions for bills.
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  Review your dashboard weekly.
-                </li>
-              </ul>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </motion.div>
+        <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Link
+              href="/transaction"
+              className="block">
+              <Button className="w-full justify-start gap-2">
+                <Plus className="h-4 w-4" /> New Transaction
+              </Button>
+            </Link>
+            <Link
+              href="/manage"
+              className="block">
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-2">
+                <Tags className="h-4 w-4" /> Categories
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

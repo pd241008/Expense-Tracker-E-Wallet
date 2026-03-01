@@ -1,6 +1,6 @@
 // app/api/users/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { convex, api } from "../../../../lib/convexClient";
+import { convex, api } from "../../../lib/convexClient";
 
 export async function POST(req: NextRequest) {
   const { id } = await req.json();

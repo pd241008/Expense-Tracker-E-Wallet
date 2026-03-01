@@ -1,6 +1,6 @@
 // app/api/categories/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { convex, api } from "../../../../lib/convexClient";
+import { convex, api } from "../../../lib/convexClient";
 
 // GET /api/categories?userId=...
 export async function GET(req: NextRequest) {
@@ -18,12 +18,11 @@ export async function GET(req: NextRequest) {
 // POST /api/categories
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { createdAt, name, icon, type, userId } = body;
+  const { name, icon, type, userId } = body;
   if (!userId)
     return NextResponse.json({ error: "Missing userId" }, { status: 400 });
 
   const category = await convex.mutation(api.category.createCategory, {
-    createdAt,
     name,
     icon,
     type,

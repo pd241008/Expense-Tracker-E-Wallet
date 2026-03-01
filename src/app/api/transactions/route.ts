@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { convex, api } from "../../../../lib/convexClient";
+import { convex, api } from "../../../lib/convexClient";
 import { Doc } from "../../../../convex/_generated/dataModel";
 
 export const dynamic = "force-dynamic";

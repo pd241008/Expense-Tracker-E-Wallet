@@ -1,36 +1,140 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 💰 Expense Manager
 
-## Getting Started
+A modern, secure, and responsive expense management web application built with **Next.js 14 (App Router)**, **Convex** for backend and database, and **Clerk** for authentication. This app empowers users to track, categorize, and manage their daily transactions with an intuitive and visually appealing interface.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## ✨ Features
+
+- **🔐 Secure Authentication**: Seamless and secure sign-in/sign-up with Clerk.
+- **🗂️ Category Management**: Create, edit, and manage expense categories effortlessly.
+- **💵 Transaction Tracking**: Add, edit, delete, and view transactions with ease.
+- **📊 Yearly Expense History**: Visualize and analyze expenses year-by-year.
+- **⚡ Serverless Backend**: Powered by Convex for real-time database and serverless functions.
+- **🎨 Modern UI**: Built with Tailwind CSS, shadcn/ui, and Framer Motion for smooth animations.
+- **🌙 Dark Mode Support**: Toggle between light and dark themes for a comfortable user experience.
+- **📱 Responsive Design**: Optimized for both desktop and mobile devices.
+
+---
+
+## 🛠️ Tech Stack
+
+- **[Next.js 14](https://nextjs.org/)**: React framework with App Router for optimized routing and API routes.
+- **[Convex](https://convex.dev/)**: Serverless backend, database, and real-time API functions.
+- **[Clerk](https://clerk.com/)**: Authentication and user management with a secure and customizable interface.
+- **[Tailwind CSS](https://tailwindcss.com/)**: Utility-first CSS framework for rapid and responsive styling.
+- **[shadcn/ui](https://ui.shadcn.com/)**: Accessible and customizable UI components.
+- **[Framer Motion](https://www.framer.com/motion/)**: Smooth and engaging animations for a polished user experience.
+
+---
+
+## 📂 Project Structure
+
+```
+src/
+├── app/
+│   ├── api/
+│   │   ├── transactions/route.ts        # API for transaction CRUD operations
+│   │   ├── categories/route.ts          # API for category management
+│   │   └── yearhistory/route.ts         # API for yearly expense history
+│   ├── dashboard/                       # Main dashboard pages
+│   └── auth/page.tsx                    # Authentication page
+├── components/                          # Reusable UI components
+├── lib/
+│   └── convexClient.ts                  # Convex client configuration
+└── convex/                              # Convex backend functions and schema
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## ⚙️ Setup Instructions
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Prerequisites
+- **Node.js**: Version 18 or higher
+- **npm**: Version 8 or higher
+- **Convex CLI**: For managing the Convex backend
+- **Clerk Account**: For authentication setup
+- **Vercel Account**: For deployment (optional)
 
-## Learn More
+### 1. Clone the Repository
+```bash
+git clone https://github.com/your-username/expense-manager.git
+cd expense-manager
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 2. Install Dependencies
+```bash
+npm install
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 3. Set Up Convex
+Install the Convex CLI globally:
+```bash
+npm install -g convex
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Initialize Convex in your project:
+```bash
+npx convex dev
+```
 
-## Deploy on Vercel
+Deploy Convex functions after making changes:
+```bash
+npx convex deploy
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 4. Set Up Clerk
+1. Create a project in the [Clerk Dashboard](https://clerk.com/).
+2. Obtain your **Frontend API Key** and **Secret Key**.
+3. Create a `.env.local` file in the project root and add the following:
+```
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_publishable_key
+CLERK_SECRET_KEY=your_secret_key
+NEXT_PUBLIC_CONVEX_URL=your_convex_url
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 5. Run the Development Server
+```bash
+npm run dev
+```
+The app will be available at `http://localhost:3000`.
+
+### 6. Deploy to Vercel
+Deploy your app effortlessly with Vercel:
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-username/expense-manager)
+
+---
+
+## 📸 Screenshots & Demo
+
+### 🔐 Authentication
+![Clerk Authentication](https://via.placeholder.com/800x400?text=Clerk+Authentication+Modal)  
+Secure login and sign-up powered by Clerk.
+
+### 📊 Dashboard
+![Dashboard](https://via.placeholder.com/800x400?text=Expense+Manager+Dashboard)  
+Track and manage categories, transactions, and yearly history in one place.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Follow these steps to contribute:
+
+1. **Fork the Repository**: Click the "Fork" button on GitHub.
+2. **Create a Feature Branch**: `git checkout -b feature/your-feature-name`
+3. **Commit Changes**: `git commit -m "Add your feature description"`
+4. **Push to Your Fork**: `git push origin feature/your-feature-name`
+5. **Submit a Pull Request**: Open a pull request with a clear description of your changes.
+
+Please ensure your code follows the project's coding standards and includes appropriate tests.
+
+---
+
+## 📜 License
+
+This project is licensed under the [MIT License](LICENSE).
+
+---
+
+Happy expense tracking! 💸

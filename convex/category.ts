@@ -1,21 +1,29 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-// CREATE
+const categoryType = v.union(
+  v.literal("income"),
+  v.literal("expense"),
+  v.literal("custom"),
+);
+
+// ---------------- CREATE ----------------
 export const createCategory = mutation({
   args: {
-    createdAt: v.number(),
     name: v.string(),
     icon: v.string(),
-    type: v.string(),
+    type: categoryType,
     userId: v.string(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("category", args);
+    return await ctx.db.insert("category", {
+      ...args,
+      createdAt: Date.now(),
+    });
   },
 });
 
-// READ (all categories by user)
+// ---------------- READ MANY ----------------
 export const listCategories = query({
   args: { userId: v.string() },
   handler: async (ctx, { userId }) => {
@@ -26,21 +34,13 @@ export const listCategories = query({
   },
 });
 
-// READ (single category by ID)
-export const getCategoryById = query({
-  args: { categoryId: v.id("category") },
-  handler: async (ctx, { categoryId }) => {
-    return await ctx.db.get(categoryId);
-  },
-});
-
-// UPDATE
+// ---------------- UPDATE ----------------
 export const updateCategory = mutation({
   args: {
     categoryId: v.id("category"),
     name: v.optional(v.string()),
     icon: v.optional(v.string()),
-    type: v.optional(v.string()),
+    type: v.optional(categoryType),
   },
   handler: async (ctx, { categoryId, ...updates }) => {
     await ctx.db.patch(categoryId, updates);
@@ -48,7 +48,7 @@ export const updateCategory = mutation({
   },
 });
 
-// DELETE
+// ---------------- DELETE ----------------
 export const deleteCategory = mutation({
   args: { categoryId: v.id("category") },
   handler: async (ctx, { categoryId }) => {

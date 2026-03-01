@@ -1,26 +1,29 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-// CREATE
+// ---------------- CREATE ----------------
 export const createTransaction = mutation({
   args: {
-    id: v.string(), // external ID (from your schema)
-    createdAt: v.number(),
-    updatedAt: v.number(),
     amount: v.number(),
     description: v.string(),
     date: v.number(),
     userId: v.string(),
-    type: v.string(),
+    type: v.union(v.literal("income"), v.literal("expense")),
     category: v.string(),
     categoryIcon: v.string(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("transaction", args);
+    const now = Date.now();
+
+    return await ctx.db.insert("transaction", {
+      ...args,
+      createdAt: now,
+      updatedAt: now,
+    });
   },
 });
 
-// READ MANY (all transactions for a user)
+// ---------------- READ MANY ----------------
 export const listTransactions = query({
   args: { userId: v.string() },
   handler: async (ctx, { userId }) => {
@@ -32,26 +35,7 @@ export const listTransactions = query({
   },
 });
 
-// READ ONE (by Convex ID)
-export const getTransaction = query({
-  args: { transactionId: v.id("transaction") },
-  handler: async (ctx, { transactionId }) => {
-    return await ctx.db.get(transactionId);
-  },
-});
-
-// READ ONE (by external id field)
-export const getTransactionByExternalId = query({
-  args: { id: v.string() },
-  handler: async (ctx, { id }) => {
-    return await ctx.db
-      .query("transaction")
-      .withIndex("by_transactionId", (q) => q.eq("id", id))
-      .unique();
-  },
-});
-
-// UPDATE
+// ---------------- UPDATE ----------------
 export const updateTransaction = mutation({
   args: {
     transactionId: v.id("transaction"),
@@ -59,15 +43,19 @@ export const updateTransaction = mutation({
     description: v.optional(v.string()),
     category: v.optional(v.string()),
     categoryIcon: v.optional(v.string()),
-    updatedAt: v.number(),
+    type: v.optional(v.union(v.literal("income"), v.literal("expense"))),
   },
   handler: async (ctx, { transactionId, ...updates }) => {
-    await ctx.db.patch(transactionId, updates);
+    await ctx.db.patch(transactionId, {
+      ...updates,
+      updatedAt: Date.now(),
+    });
+
     return await ctx.db.get(transactionId);
   },
 });
 
-// DELETE
+// ---------------- DELETE ----------------
 export const deleteTransaction = mutation({
   args: { transactionId: v.id("transaction") },
   handler: async (ctx, { transactionId }) => {

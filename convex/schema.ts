@@ -2,9 +2,9 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // User table (Persisted on Clerk)
+  // User (Clerk ID stored)
   user: defineTable({
-    id: v.string(), // Clerk userId
+    id: v.string(),
   }).index("by_userId", ["id"]),
 
   // User Settings
@@ -15,32 +15,31 @@ export default defineSchema({
 
   // Category
   category: defineTable({
-    createdAt: v.number(), // timestamp
+    createdAt: v.number(),
     name: v.string(),
     icon: v.string(),
-    type: v.string(),
+    type: v.union(
+      v.literal("income"),
+      v.literal("expense"),
+      v.literal("custom"), // ← MUST exist here
+    ),
     userId: v.string(),
   }).index("by_userId", ["userId"]),
 
-  // Transaction
+  // Transaction (CLEAN VERSION — no external id)
   transaction: defineTable({
-    id: v.string(), // external ID
     createdAt: v.number(),
     updatedAt: v.number(),
     amount: v.number(),
     description: v.string(),
     date: v.number(),
     userId: v.string(),
-    type: v.string(),
+    type: v.union(v.literal("income"), v.literal("expense")),
     category: v.string(),
     categoryIcon: v.string(),
-  })
-    .index("by_userId", ["userId"])
-    .index("by_transactionId", ["id"]),
+  }).index("by_userId", ["userId"]),
 
-  // ---- Aggregates ----
-
-  // Month History (Aggregate)
+  // Month History
   monthhistory: defineTable({
     userId: v.string(),
     day: v.number(),
@@ -52,7 +51,7 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_month", ["userId", "year", "month", "day"]),
 
-  // Year History (Aggregate)
+  // Year History
   yearhistory: defineTable({
     userId: v.string(),
     month: v.number(),

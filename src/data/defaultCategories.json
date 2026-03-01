@@ -1,0 +1,50 @@
+[
+  {
+    "_id": "def-home",
+    "name": "Home & Rent",
+    "icon": "home",
+    "type": "default",
+    "userId": "system",
+    "createdAt": 0
+  },
+  {
+    "_id": "def-groceries",
+    "name": "Groceries",
+    "icon": "shopping-cart",
+    "type": "default",
+    "userId": "system",
+    "createdAt": 0
+  },
+  {
+    "_id": "def-transport",
+    "name": "Transport",
+    "icon": "car",
+    "type": "default",
+    "userId": "system",
+    "createdAt": 0
+  },
+  {
+    "_id": "def-utilities",
+    "name": "Utilities",
+    "icon": "zap",
+    "type": "default",
+    "userId": "system",
+    "createdAt": 0
+  },
+  {
+    "_id": "def-entertainment",
+    "name": "Entertainment",
+    "icon": "smile",
+    "type": "default",
+    "userId": "system",
+    "createdAt": 0
+  },
+  {
+    "_id": "def-other",
+    "name": "Other",
+    "icon": "more-horizontal",
+    "type": "default",
+    "userId": "system",
+    "createdAt": 0
+  }
+]

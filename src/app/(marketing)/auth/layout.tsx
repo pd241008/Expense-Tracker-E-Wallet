@@ -4,9 +4,6 @@ export default function AuthLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-white to-blue-50">
-      {children}
-    </div>
-  );
+  // Auth screen renders standalone on the shared theme; no navbar/sidebar.
+  return <>{children}</>;
 }

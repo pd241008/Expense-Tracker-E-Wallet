@@ -138,3 +138,10 @@ This project is licensed under the [MIT License](LICENSE).
 ---
 
 Happy expense tracking! 💸
+
+
+## 🎯 Project Roadmap
+- [x] **Phase 1**: Full-Stack Monolith Scaffolding (Next.js).
+- [x] **Phase 2**: Database Layer Setup (Convex).
+- [ ] **Phase 3**: Core Logic Implementation.
+- [ ] **Phase 4**: UI Polish & Release.

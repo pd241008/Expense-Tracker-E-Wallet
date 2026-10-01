@@ -1,91 +1,117 @@
-"use client";
+"use client"
 
-import { useUser, SignInButton, useClerk } from "@clerk/nextjs";
-// Using polished shadcn/ui components
-import {
-  Card,
-  CardHeader,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import * as React from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { motion } from "framer-motion"
+import { useUser, SignInButton } from "@clerk/nextjs"
+
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Navbar } from "@/components/Navbar"
+
+const FEATURES = [
+  {
+    title: "Effortless tracking",
+    body: "Record income and expenses in seconds with a form that stays out of your way.",
+  },
+  {
+    title: "Categories that make sense",
+    body: "Start with sensible defaults, then shape them to match how you actually spend.",
+  },
+  {
+    title: "A year at a glance",
+    body: "Activity heatmap, yearly totals, and breakdowns that turn raw entries into answers.",
+  },
+]
 
 export default function HomePage() {
-  const { isSignedIn, isLoaded, user } = useUser();
-  const { signOut } = useClerk();
-  const router = useRouter();
+  return (
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-dotted">
+      <React.Suspense fallback={<Skeleton className="h-14 w-full rounded-none" />}>
+        <Navbar />
+      </React.Suspense>
 
-  useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      // Redirect to the dashboard if signed in
-      router.push("/dashboard");
-    }
-  }, [isSignedIn, isLoaded, router]);
+      <main className="relative flex flex-1 items-center justify-center px-4 py-16">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-[420px] max-w-3xl rounded-full bg-primary/15 blur-[140px]"
+        />
 
-  if (!isLoaded) return <p className="text-center text-gray-400">Loading...</p>; // Updated text color for dark theme
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="relative z-10 w-full max-w-2xl text-center"
+        >
+          <span className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            Free · Private · No spreadsheets
+          </span>
 
-  const handleSignOut = async () => {
-    await signOut();
-    router.push("/");
-  };
+          <h1 className="mt-6 text-balance text-4xl font-bold tracking-tight sm:text-5xl">
+            Know where your{" "}
+            <span className="bg-gradient-to-r from-primary to-chart-2 bg-clip-text text-transparent">
+              money goes
+            </span>
+          </h1>
+          <p className="mx-auto mt-4 max-w-xl text-pretty text-base text-muted-foreground sm:text-lg">
+            Spendly is a fast, private expense tracker. Log transactions,
+            organize categories, and see your whole year on one screen.
+          </p>
+
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <DashboardButton />
+            <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
+              <Link href="/auth">Sign in</Link>
+            </Button>
+          </div>
+
+          <dl className="mx-auto mt-14 grid max-w-lg grid-cols-1 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-3">
+            {FEATURES.map((f) => (
+              <div key={f.title} className="bg-card p-4 text-left">
+                <dt className="text-sm font-semibold">{f.title}</dt>
+                <dd className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  {f.body}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </motion.div>
+      </main>
+
+      <footer className="relative z-10 border-t py-6 text-center text-xs text-muted-foreground">
+        © {new Date().getFullYear()} Spendly — personal finance, minus the clutter.
+      </footer>
+    </div>
+  )
+}
+
+function DashboardButton() {
+  const { isLoaded, isSignedIn } = useUser()
+  const router = useRouter()
+
+  if (!isLoaded) {
+    return <Skeleton className="h-10 w-40 rounded-md" />
+  }
+
+  if (isSignedIn) {
+    return (
+      <Button
+        size="lg"
+        className="w-full sm:w-auto"
+        onClick={() => router.push("/dashboard")}
+      >
+        Open dashboard
+      </Button>
+    )
+  }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-950 relative overflow-hidden">
-      {/* Dynamic Background Texture/Effect for depth */}
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-10"></div>
-      <div className="absolute top-0 left-0 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-      <div className="absolute bottom-0 right-0 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7 }}
-        className="w-full max-w-sm relative z-20 p-4">
-        {" "}
-        {/* Reduced max-width slightly for focus */}
-        {/* Polished Card with Gradient Border Effect */}
-        <div className="p-px rounded-2xl bg-gradient-to-br from-indigo-500/50 to-purple-500/50 shadow-2xl">
-          <Card className="shadow-2xl rounded-2xl border-none bg-gray-900/90 backdrop-blur-md">
-            <CardHeader className="text-center p-8">
-              <h1 className="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
-                {isSignedIn
-                  ? `Welcome back, ${user?.firstName || "User"}! 👋`
-                  : "Expense Manager"}
-              </h1>
-              <p className="text-gray-400 text-sm mt-2">
-                {isSignedIn
-                  ? "Redirecting you to your financial hub..."
-                  : "Track, analyze, and master your spending. Sign in to start."}
-              </p>
-            </CardHeader>
-
-            {!isSignedIn && (
-              <CardContent className="flex flex-col items-center p-8 pt-0">
-                <SignInButton mode="modal">
-                  <Button className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-lg text-white font-semibold shadow-xl shadow-purple-600/30 hover:shadow-purple-500/50 transition-all duration-300 transform hover:scale-[1.02]">
-                    Sign In Securely
-                  </Button>
-                </SignInButton>
-              </CardContent>
-            )}
-
-            {isSignedIn && (
-              <CardFooter className="flex justify-center p-6 pt-0">
-                <Button
-                  variant="outline"
-                  className="rounded-xl border-gray-700 text-gray-300 hover:bg-gray-700/50 hover:text-white transition-colors duration-300"
-                  onClick={handleSignOut}>
-                  Sign Out
-                </Button>
-              </CardFooter>
-            )}
-          </Card>
-        </div>
-      </motion.div>
-    </div>
-  );
+    <SignInButton mode="modal">
+      <Button size="lg" className="w-full sm:w-auto">
+        Get started — it&apos;s free
+      </Button>
+    </SignInButton>
+  )
 }
-// Note: You would need to define the 'animate-blob' and 'animation-delay-4000' in your global CSS or tailwind.config.js for the background effect.

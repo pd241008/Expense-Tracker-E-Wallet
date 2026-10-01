@@ -1,23 +1,31 @@
-// app/api/yearhistory/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { convex, api } from "../../../lib/convexClient";
-
-export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const record = await convex.mutation(api.yearhistory.upsertYearHistory, body);
-  return NextResponse.json(record);
-}
+import { convex, api } from "@/lib/convexClient";
+import { getAuthUserId } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const userId = searchParams.get("userId");
-  if (!userId)
-    return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+  try {
+    const userId = await getAuthUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const year = Number(searchParams.get("year"));
-  const records = await convex.query(api.yearhistory.listYearHistory, {
-    userId,
-    year,
-  });
-  return NextResponse.json(records);
+    const { searchParams } = new URL(req.url);
+    const year = Number(searchParams.get("year"));
+
+    if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+      return NextResponse.json({ error: "Invalid year" }, { status: 400 });
+    }
+
+    const records = await convex.query(api.yearhistory.listYearHistory, {
+      userId,
+      year,
+    });
+    return NextResponse.json(records);
+  } catch (err) {
+    console.error("GET /yearhistory error:", err);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
+  }
 }

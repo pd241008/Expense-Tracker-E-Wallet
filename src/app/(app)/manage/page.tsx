@@ -1,230 +1,337 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
-import { fetchJson } from "../../lib/fetchJson";
-import { motion } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Trash2, Plus, Loader2, Lock, Tag, LayoutGrid } from "lucide-react";
-import defaultCategoriesData from "@/data/defaultCategories.json";
 
-export interface Category {
-  _id: string;
-  name: string;
-  icon: string;
-  type: string;
-  userId: string;
-  createdAt: number;
-}
+import * as React from "react";
+import { useUser } from "@clerk/nextjs";
+import { toast } from "sonner";
+import { fetchJson } from "@/lib/fetchJson";
+import { PageHeader } from "@/components/PageHeader";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  CategoryIcon,
+  CATEGORY_ICON_KEYS,
+  categoryIconLabel,
+} from "@/components/CategoryIcon";
+import defaultCategoriesData from "@/data/defaultCategories.json";
+import type { Category } from "@/lib/types";
+import { Lock, Plus, Trash2 } from "lucide-react";
 
 const DEFAULT_CATEGORIES = defaultCategoriesData as Category[];
+
+type LoadState = "loading" | "ready" | "error";
 
 export default function ManagePage() {
   const { isLoaded, isSignedIn, user } = useUser();
 
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [name, setName] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [categories, setCategories] = React.useState<Category[]>([]);
+  const [state, setState] = React.useState<LoadState>("loading");
+  const [name, setName] = React.useState("");
+  const [icon, setIcon] = React.useState("tag");
+  const [saving, setSaving] = React.useState(false);
+  const [deletingId, setDeletingId] = React.useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
-    const uid = user!.id;
-    setLoading(true);
-    fetchJson(`/api/categories?userId=${uid}`)
-      .then((cats) => setCategories(cats || []))
-      .finally(() => setLoading(false));
+  React.useEffect(() => {
+    if (!isLoaded || !isSignedIn || !user) return;
+    let cancelled = false;
+    setState("loading");
+    fetchJson<Category[]>(`/api/categories?userId=${user.id}`)
+      .then((cats) => {
+        if (!cancelled) {
+          setCategories(Array.isArray(cats) ? cats : []);
+          setState("ready");
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load categories:", err);
+        if (!cancelled) setState("error");
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [isLoaded, isSignedIn, user]);
 
+  const allCategories = React.useMemo(
+    () => [...DEFAULT_CATEGORIES, ...categories],
+    [categories],
+  );
+
+  const trimmedName = name.trim();
+  const isDuplicate = allCategories.some(
+    (c) => c.name.toLowerCase() === trimmedName.toLowerCase(),
+  );
+  const canCreate =
+    trimmedName.length > 0 && !isDuplicate && !saving && !!user;
+
   const createCategory = async () => {
-    if (!name.trim()) return;
-    const uid = user!.id;
-    const newName = name.trim();
+    if (!canCreate || !user) return;
     setSaving(true);
-
-    const newCategory: Category = {
-      _id: crypto.randomUUID(),
-      createdAt: Date.now(),
-      name: newName,
-      icon: "tag",
-      type: "custom",
-      userId: uid,
-    };
-
-    setCategories((prev) => [...prev, newCategory]);
-    setName("");
-
-    await fetchJson("/api/categories", {
-      method: "POST",
-      body: JSON.stringify(newCategory),
-    });
-
-    const cats = await fetchJson(`/api/categories?userId=${uid}`);
-    setCategories(cats);
-    setSaving(false);
+    try {
+      await fetchJson("/api/categories", {
+        method: "POST",
+        body: JSON.stringify({
+          userId: user.id,
+          name: trimmedName,
+          icon,
+          type: "custom",
+        }),
+      });
+      const cats = await fetchJson<Category[]>(
+        `/api/categories?userId=${user.id}`,
+      );
+      setCategories(Array.isArray(cats) ? cats : []);
+      setName("");
+      setIcon("tag");
+      toast.success(`Category “${trimmedName}” created`);
+    } catch (err) {
+      console.error("Failed to create category:", err);
+      toast.error("Couldn't create the category. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const deleteCategory = async (id: string) => {
-    setCategories((prev) => prev.filter((c) => c._id !== id));
-    await fetchJson("/api/categories", {
-      method: "DELETE",
-      body: JSON.stringify({ categoryId: id }),
-    });
-    const cats = await fetchJson(`/api/categories?userId=${user!.id}`);
-    setCategories(cats);
+  const deleteCategory = async (id: string, categoryName: string) => {
+    if (!user) return;
+    setDeletingId(id);
+    const prev = categories;
+    setCategories((cur) => cur.filter((c) => c._id !== id));
+    try {
+      await fetchJson("/api/categories", {
+        method: "DELETE",
+        body: JSON.stringify({ categoryId: id }),
+      });
+      toast.success(`Category “${categoryName}” deleted`);
+    } catch {
+      setCategories(prev);
+      toast.error("Couldn't delete the category. Please try again.");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
-  const allCategories = [...DEFAULT_CATEGORIES, ...categories];
-  const defaultCount = DEFAULT_CATEGORIES.length;
-  const customCount = categories.length;
+  if (!isLoaded || state === "loading") {
+    return (
+      <div>
+        <PageHeader
+          title="Categories"
+          description="Organize transactions into groups that make sense to you."
+        />
+        <div className="space-y-2">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-16 w-full rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (state === "error") {
+    return (
+      <div>
+        <PageHeader title="Categories" />
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
+            <p className="font-medium">Couldn&apos;t load categories</p>
+            <p className="max-w-sm text-sm text-muted-foreground">
+              Something went wrong. Check your connection and try again.
+            </p>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex-1 space-y-8 p-8 pt-6">
-      <div className="flex items-center justify-between">
-        <motion.h2
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="text-3xl font-bold tracking-tight text-foreground">
-          Manage Categories
-        </motion.h2>
-      </div>
+    <div className="pb-16 md:pb-0">
+      <PageHeader
+        title="Categories"
+        description="Organize transactions into groups that make sense to you."
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Categories List — left, 2/3 */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* List */}
         <div className="lg:col-span-2">
-          <Card className="border-border bg-card shadow-sm">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-semibold text-foreground">
-                Your Categories
-              </CardTitle>
+              <CardTitle>Your categories</CardTitle>
+              <CardDescription>
+                {DEFAULT_CATEGORIES.length} default ·{" "}
+                {categories.length} custom
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex justify-center p-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : allCategories.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-border rounded-xl bg-background/50">
-                  <LayoutGrid className="h-10 w-10 text-muted-foreground mb-4 opacity-50" />
-                  <p className="text-sm font-medium text-foreground">
-                    No categories yet
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Create a custom category to get started.
-                  </p>
-                </div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="space-y-2 max-h-[520px] overflow-y-auto pr-1 no-scrollbar">
-                  {allCategories.map((c) => {
-                    const isDefault = c.type === "default";
-                    return (
-                      <div
-                        key={c._id}
-                        className="group flex items-center justify-between p-4 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-all shadow-sm">
-                        <div className="flex items-center gap-4">
-                          <div
-                            className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                              isDefault
-                                ? "bg-primary/10 text-primary"
-                                : "bg-secondary text-muted-foreground"
-                            }`}>
-                            {isDefault ? (
-                              <LayoutGrid className="h-5 w-5" />
-                            ) : (
-                              <Tag className="h-5 w-5" />
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-foreground">
-                              {c.name}
-                            </p>
-                            <span
-                              className={`inline-block mt-1 px-1.5 py-0.5 rounded-md text-[10px] uppercase tracking-wider ${
-                                isDefault
-                                  ? "bg-primary/10 text-primary"
-                                  : "bg-secondary text-muted-foreground"
-                              }`}>
-                              {c.type}
-                            </span>
-                          </div>
-                        </div>
+            <CardContent className="space-y-2">
+              {allCategories.map((c) => {
+                const isDefault = c.type === "default";
+                return (
+                  <div
+                    key={c._id}
+                    className="group flex items-center gap-3 rounded-xl border bg-card p-3 transition-colors hover:bg-accent/40"
+                  >
+                    <div
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${
+                        isDefault
+                          ? "border-primary/20 bg-primary/10 text-primary"
+                          : "border-border bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      <CategoryIcon icon={c.icon} className="h-4 w-4" />
+                    </div>
 
-                        <div className="flex items-center gap-2">
-                          {isDefault ? (
-                            <div
-                              className="p-2 text-muted-foreground/40"
-                              title="System categories cannot be deleted">
-                              <Lock className="h-4 w-4" />
-                            </div>
-                          ) : (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => deleteCategory(c._id)}
-                              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all h-8 w-8">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{c.name}</p>
+                      <span
+                        className={`mt-0.5 inline-block rounded px-1.5 py-px text-[10px] font-medium uppercase tracking-wider ${
+                          isDefault
+                            ? "bg-primary/10 text-primary"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {isDefault ? "Default" : "Custom"}
+                      </span>
+                    </div>
+
+                    {isDefault ? (
+                      <div
+                        className="flex h-8 w-8 items-center justify-center text-muted-foreground/40"
+                        title="System categories can't be deleted"
+                      >
+                        <Lock className="h-3.5 w-3.5" />
                       </div>
-                    );
-                  })}
-                </motion.div>
-              )}
+                    ) : (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Delete ${c.name}`}
+                            disabled={deletingId === c._id}
+                            className="h-8 w-8 hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Delete “{c.name}”?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Existing transactions keep their category name,
+                              but you won&apos;t be able to pick it for new
+                              ones. This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-destructive text-white hover:bg-destructive/90"
+                              onClick={() => deleteCategory(c._id, c.name)}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
         </div>
 
-        {/* New Category Form — right sticky column, 1/3 */}
-        <div className="lg:col-span-1">
-          <Card className="border-border bg-card shadow-sm sticky top-24">
+        {/* Create form */}
+        <div>
+          <Card className="lg:sticky lg:top-20">
             <CardHeader>
-              <CardTitle className="text-lg font-semibold text-foreground">
-                New Custom Category
-              </CardTitle>
+              <CardTitle>New category</CardTitle>
+              <CardDescription>
+                Pick a name and an icon that fits.
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-5">
-              {/* Stats */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg bg-secondary p-3 text-center">
-                  <p className="text-xl font-bold text-foreground">
-                    {defaultCount}
+            <CardContent className="space-y-4">
+              <div>
+                <label
+                  htmlFor="cat-name"
+                  className="mb-1.5 block text-sm font-medium"
+                >
+                  Name
+                </label>
+                <Input
+                  id="cat-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && createCategory()}
+                  placeholder="e.g., Subscriptions"
+                  maxLength={60}
+                  aria-invalid={isDuplicate}
+                />
+                {isDuplicate && (
+                  <p className="mt-1.5 text-xs text-destructive">
+                    A category with this name already exists.
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5 uppercase tracking-wider">
-                    Default
-                  </p>
-                </div>
-                <div className="rounded-lg bg-secondary p-3 text-center">
-                  <p className="text-xl font-bold text-foreground">
-                    {customCount}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5 uppercase tracking-wider">
-                    Custom
-                  </p>
-                </div>
+                )}
               </div>
 
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && createCategory()}
-                placeholder="e.g., Hobby, Subscriptions..."
-                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all"
-              />
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">
+                  Icon
+                </label>
+                <Select value={icon} onValueChange={setIcon}>
+                  <SelectTrigger className="w-full">
+                    <span className="flex items-center gap-2">
+                      <CategoryIcon icon={icon} className="h-4 w-4" />
+                      {categoryIconLabel(icon)}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORY_ICON_KEYS.map((key) => (
+                      <SelectItem key={key} value={key}>
+                        <span className="flex items-center gap-2">
+                          <CategoryIcon icon={key} className="h-4 w-4" />
+                          {categoryIconLabel(key)}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               <Button
+                className="w-full"
                 onClick={createCategory}
-                disabled={!name.trim() || saving}
-                className="w-full h-11 gap-2">
-                {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="h-4 w-4" />
-                )}
-                Create Category
+                disabled={!canCreate}
+              >
+                <Plus className="h-4 w-4" />
+                {saving ? "Creating…" : "Create category"}
               </Button>
             </CardContent>
           </Card>
